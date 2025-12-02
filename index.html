@@ -9,9 +9,11 @@
     .container { max-width: 900px; margin: 4rem auto; padding: 2rem; text-align: center; }
     h1 { margin-bottom: 0.5rem; }
     p.lead { color: #444; margin-top: 0; margin-bottom: 2rem; }
-    .btn { display: inline-block; background: #1f6feb; color: white; padding: 14px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 6px 18px rgba(31,111,235,0.16); }
+    .btn { display: inline-block; background: #1f6feb; color: white; padding: 14px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 6px 18px rgba(31,111,235,0.16); margin: 6px; }
+    .btn.secondary { background: #111; }
     .btn:focus, .btn:hover { background: #1558c7; }
     .note { margin-top: 1rem; color:#666; font-size:0.9rem }
+    .actions { margin-top: 1.5rem; }
   </style>
 </head>
 <body>
@@ -19,9 +21,13 @@
     <h1>Welcome</h1>
     <p class="lead">This repository hosts my GitHub Pages site.</p>
 
-    <a class="btn" href="https://ol-big-boots.github.io/pdf-flipbook/" target="_blank" rel="noopener">Open the PDF Flipbook demo</a>
+    <div class="actions">
+      <a class="btn" href="https://ol-big-boots.github.io/pdf-flipbook/" target="_blank" rel="noopener">Open the PDF Flipbook demo</a>
+      <!-- One link to the music collection page -->
+      <a class="btn secondary" href="/music.html">Music</a>
+    </div>
 
-    <p class="note">Opens in a new tab — the flipbook demo showcases a PDF-based zine viewer.</p>
+    <p class="note">Opens in a new tab — the flipbook demo showcases a PDF-based zine viewer. Click "Music" to view all uploaded tracks.</p>
   </div>
 </body>
 </html>
