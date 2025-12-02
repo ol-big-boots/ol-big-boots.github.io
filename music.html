@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Music — ol-big-boots</title>
+  <style>
+    :root { --bg:#f7f7f8; --card:#fff; --muted:#666; --accent:#111; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--accent); padding:28px;}
+    .wrap{max-width:980px;margin:0 auto;}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    h1{margin:0;font-size:1.25rem}
+    p.lead{margin:6px 0 18px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+    .card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(16,16,26,.06);} 
+    .meta{font-size:0.9rem;color:var(--muted);margin-bottom:8px}
+    audio{width:100%}
+    .actions{display:flex;gap:8px;margin-top:8px}
+    .button{background:#111;color:#fff;padding:8px 10px;border-radius:8px;text-decoration:none;font-size:0.9rem}
+    a.hollow{background:transparent;border:1px solid #ddd;color:var(--accent);padding:8px 10px;border-radius:8px;text-decoration:none}
+    .note{margin-top:16px;color:var(--muted);font-size:0.95rem}
+    .empty{padding:20px;text-align:center;color:var(--muted);background:linear-gradient(180deg,#fff, #fbfbfc);border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Music</h1>
+      <nav style="margin-left:auto">
+        <!-- Put this same link on your main page where you want "one link" to point to all music -->
+        <a href="/" class="hollow" title="Back to site">Back</a>
+      </nav>
+    </header>
+
+    <p class="lead">All tracks in this collection are loaded automatically from the repository. To add a new track, upload the file to the assets/audio folder (or the repo root) — no page changes required.</p>
+
+    <div id="status" class="note">Loading tracks…</div>
+
+    <div id="musicGrid" class="grid" aria-live="polite" style="margin-top:12px"></div>
+
+    <div class="note">
+      Tip: for best results create a folder at <code>assets/audio/</code> and upload files there. Filenames without spaces (e.g. idea-4.wav) avoid needing %20 encoding in links.
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const owner = 'ol-big-boots';
+      const repo = 'ol-big-boots.github.io';
+      const branch = 'main';
+      const preferredPath = 'assets/audio'; // primary place to look
+      const allowedExt = ['.mp3','.wav','.ogg','.m4a','.flac']; // supported audio extensions
+      const statusEl = document.getElementById('status');
+      const grid = document.getElementById('musicGrid');
+
+      function isAudio(name){
+        const lower = name.toLowerCase();
+        return allowedExt.some(ext => lower.endsWith(ext));
+      }
+
+      function makeFileUrl(path, name){
+        // Use the GitHub Pages URL which will correctly serve files
+        // Encode only the filename portion
+        return `https://${owner}.github.io/${path ? path + '/' : ''}${encodeURIComponent(name)}`;
+      }
+
+      function fileCard(item, path){
+        const url = makeFileUrl(path, item.name);
+        const card = document.createElement('div');
+        card.className = 'card';
+        const title = document.createElement('div');
+        title.style.fontWeight = '600';
+        title.textContent = item.name;
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = `${(item.size/1024|0)} KB`;
+
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.preload = 'metadata';
+        const src = document.createElement('source');
+        src.src = url;
+        src.type = item.name.toLowerCase().endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav';
+        audio.appendChild(src);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        const dl = document.createElement('a');
+        dl.className = 'button';
+        dl.href = url;
+        dl.download = item.name;
+        dl.textContent = 'Download';
+        const raw = document.createElement('a');
+        raw.className = 'hollow';
+        raw.href = url;
+        raw.target = '_blank';
+        raw.rel = 'noopener';
+        raw.textContent = 'Open file';
+
+        actions.appendChild(dl);
+        actions.appendChild(raw);
+
+        card.appendChild(title);
+        card.appendChild(meta);
+        card.appendChild(audio);
+        card.appendChild(actions);
+        return card;
+      }
+
+      async function listPath(path){
+        const api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+        try {
+          const res = await fetch(api);
+          if(!res.ok) throw new Error('not found');
+          const data = await res.json();
+          if(!Array.isArray(data)) return [];
+          // filter files by audio extension
+          return data.filter(f => f.type === 'file' && isAudio(f.name));
+        } catch(err){
+          console.warn('listPath error', err);
+          return null; // signal failure
+        }
+      }
+
+      async function showTracks(){
+        statusEl.textContent = 'Looking for tracks…';
+        // Try preferredPath first
+        let items = await listPath(preferredPath);
+        let usedPath = preferredPath;
+        if(items === null){ // API error (maybe rate limit), try root as fallback
+          statusEl.textContent = 'Couldn’t query GitHub API — attempting fallback (root)';
+          items = await listPath(''); 
+          usedPath = '';
+        }
+        if(items && items.length === 0){
+          // No tracks in preferredPath -> try root
+          if(usedPath !== ''){
+            statusEl.textContent = `No tracks found in /${preferredPath} — checking repository root…`;
+            const rootItems = await listPath('');
+            if(rootItems && rootItems.length > 0){
+              items = rootItems;
+              usedPath = '';
+            }
+          }
+        }
+
+        // If still null or empty, show empty state and instructions
+        if(!items || items.length === 0){
+          statusEl.innerHTML = `No audio files found automatically. <strong>To add music:</strong> create <code>assets/audio/</code> and upload files there (supported: ${allowedExt.join(', ')}). If you prefer, upload files to the repo root and they will also be detected.`;
+          return;
+        }
+
+        statusEl.textContent = `Found ${items.length} track${items.length===1?'':'s'} (source: ${usedPath || 'root'})`;
+        // sort by filename (optional)
+        items.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
+        // render
+        items.forEach(it=>{
+          const card = fileCard(it, usedPath);
+          grid.appendChild(card);
+        });
+      }
+
+      // start
+      showTracks();
+    })();
+  </script>
+</body>
+</html>
